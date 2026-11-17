@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-and-benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu -e ".[dev]"
+
+      - name: Run Ruff linter and format check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Run Pytest suite (strict warnings as errors)
+        run: pytest -v -W error
+
+      - name: Run KV-Infer-Opt Comparative Benchmark Suite
+        run: kv-infer-opt benchmark
+
+      - name: Run KV-Infer-Opt Radix Prefix Cache Inspection
+        run: kv-infer-opt inspect-radix
